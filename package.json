@@ -1,0 +1,50 @@
+{
+  "name": "kadira-graphql",
+  "version": "0.0.1",
+  "description": "Kadira client to track graphql server performance metrics.",
+  "main": "./build/",
+  "options": {
+    "mocha": "--require scripts/mocha-bootload src/**/__tests__/**/*.js"
+  },
+  "babel": {
+    "optional": [
+      "runtime",
+      "es7.asyncFunctions"
+    ]
+  },
+  "scripts": {
+    "make": "./scripts/prepublish.sh",
+    "lint": "./node_modules/.bin/eslint ./src",
+    "lintfix": "./node_modules/.bin/eslint ./src --fix",
+    "testonly": "./node_modules/.bin/mocha $npm_package_options_mocha",
+    "test": "npm run lint && npm run testonly"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kadirahq/kadira-graphql.git"
+  },
+  "keywords": [
+    "kadira"
+  ],
+  "author": "Kadira Inc.",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kadirahq/kadira-graphql/issues"
+  },
+  "homepage": "https://github.com/kadirahq/kadira-graphql#readme",
+  "devDependencies": {
+    "babel": "5.x.x",
+    "babel-eslint": "4.x.x",
+    "bluebird": "3.0.x",
+    "boom": "2.10.x",
+    "chai": "3.x.x",
+    "eslint": "1.7.x",
+    "eslint-plugin-babel": "2.x.x",
+    "hapi": "11.0.x",
+    "mocha": "2.x.x"
+  },
+  "dependencies": {
+    "babel-runtime": "6.0.x",
+    "isomorphic-fetch": "2.2.x"
+  }
+}
