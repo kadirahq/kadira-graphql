@@ -17,7 +17,10 @@ export function connect(options) {
 
 function processTree(tree) {
   // TODO collect graph metrics with meta data.
-  const traces = createTrace(tree.root).children;
+  const result = walkTheTree(tree.root);
+  const metrics = result.metrics;
+  const traces = result.trace.children;
+  console.log('! metrics:', JSON.stringify(metrics, null, 2));
   console.log('! traces:', JSON.stringify(traces, null, 2));
 }
 
@@ -31,19 +34,34 @@ function formatMeta(meta) {
     '.' + meta.fieldName;
 }
 
-function createTrace(tree) {
-  const trace = {
-    name: formatMeta(tree.meta),
-    metrics: tree.metrics,
-    children: [],
+function walkTheTree(tree, _allMetrics) {
+  let allMetrics = _allMetrics;
+  if (!allMetrics) {
+    allMetrics = {};
   }
 
-  for (var childName in tree.children) {
-    if (tree.children.hasOwnProperty(childName)) {
-      const child = tree.children[childName];
-      trace.children.push(createTrace(child));
+  const name = formatMeta(tree.meta);
+  let metrics = allMetrics[name];
+  if (!metrics) {
+    metrics = allMetrics[name] = tree.metrics;
+  } else {
+    for (var key in tree.metrics) {
+      if (tree.metrics.hasOwnProperty(key)) {
+        metrics[key].total += tree.metrics[key].total;
+        metrics[key].count += tree.metrics[key].count;
+      }
     }
   }
 
-  return trace;
+  const children = [];
+  for (var childName in tree.children) {
+    if (tree.children.hasOwnProperty(childName)) {
+      const child = tree.children[childName];
+      const result = walkTheTree(child, allMetrics);
+      children.push(result.trace);
+    }
+  }
+
+  const trace = {name, metrics, children: []};
+  return {metrics: allMetrics, trace};
 }

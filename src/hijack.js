@@ -128,7 +128,10 @@ function hijackResolve(field, meta) {
 
     return Promise.resolve(output).then(function (data) {
       const millis = Date.now() - before;
-      const metrics = {millis};
+      const metrics = {
+        time: {total: millis, count: 1},
+        count: {total: 1, count: 1},
+      };
 
       function wrap(item) {
         try {
