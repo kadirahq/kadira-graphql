@@ -24,18 +24,14 @@ function processTree(tree) {
   console.log('! traces:', JSON.stringify(traces, null, 2));
 }
 
-function formatMeta(meta) {
-  if (!meta) {
-    return '';
+function walkTheTree(tree, allMetrics = {}) {
+  let name = '';
+  if (tree.meta) {
+    name = tree.meta.schemaName +
+      '.' + tree.meta.typeName +
+      '.' + tree.meta.fieldName;
   }
 
-  return meta.schemaName +
-    '.' + meta.typeName +
-    '.' + meta.fieldName;
-}
-
-function walkTheTree(tree, allMetrics = {}) {
-  const name = formatMeta(tree.meta);
   let metrics = allMetrics[name];
   if (!metrics) {
     metrics = allMetrics[name] = tree.metrics;
