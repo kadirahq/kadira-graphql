@@ -16,7 +16,7 @@ export function connect(options) {
   return kadira.connect().then(() => {
     hijack();
     emitter.on('metrics', collectMetrics);
-    emitter.on('traces', sendTraces);
+    emitter.on('traces', collectTraces);
     setInterval(flushData, 10 * 1000);
   });
 }
@@ -37,11 +37,15 @@ function collectMetrics(data) {
   }
 }
 
-function sendTraces(data) {
+function collectTraces(data) {
   kadira.addData('graphqlTraces', data);
 }
 
 function flushData() {
+  if (!Object.keys(metrics).length) {
+    return;
+  }
+
   kadira.addData('graphqlMetrics', metrics);
   metrics = {};
 }
