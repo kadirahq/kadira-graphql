@@ -34,12 +34,7 @@ function formatMeta(meta) {
     '.' + meta.fieldName;
 }
 
-function walkTheTree(tree, _allMetrics) {
-  let allMetrics = _allMetrics;
-  if (!allMetrics) {
-    allMetrics = {};
-  }
-
+function walkTheTree(tree, allMetrics = {}) {
   const name = formatMeta(tree.meta);
   let metrics = allMetrics[name];
   if (!metrics) {

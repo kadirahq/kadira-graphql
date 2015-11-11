@@ -43,8 +43,8 @@ class ResultNode {
 }
 
 // Hijack the execute function
-export function hijack(fn) {
-  processor = fn || Function();
+export function hijack(fn = Function()) {
+  processor = fn;
   execute.execute = hijackedExecute;
 }
 
