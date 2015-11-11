@@ -146,7 +146,9 @@ function hijackResolve(field, schemaName, typeName, fieldName) {
           const node = parent.addChild(meta, metrics);
           item.__kadiraData = node;
         } catch (e) {
-          // ignore
+          // TODO check the error and selectively ignore them
+          // Throw all other errors for now (while still alpha).
+          // Log and ignore errors before releasing to users.
         }
       }
 
