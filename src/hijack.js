@@ -133,6 +133,8 @@ function hijackResolve(field, meta) {
 
       function wrap(item) {
         try {
+          // Sometimes, resolved results do not allow setting a `__kadiraData`
+          // field. Catch that error and stop collecting for those results.
           const node = parent.addChild(meta, metrics);
           item.__kadiraData = node;
         } catch (e) {
