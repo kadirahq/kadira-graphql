@@ -46,6 +46,7 @@
   },
   "dependencies": {
     "babel-runtime": "6.0.x",
+    "events": "1.1.x",
     "isomorphic-fetch": "2.2.x",
     "kadira-core": "0.0.1"
   },

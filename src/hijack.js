@@ -1,3 +1,4 @@
+import {EventEmitter} from 'events';
 const execute = require('graphql/execution/execute');
 const originalExecute = execute.execute;
 
@@ -5,9 +6,9 @@ const originalExecute = execute.execute;
 let NEXT_SCHEMA_ID = 0;
 let NEXT_NODE_ID = 0;
 
-// Holds the function which is to be called when
-// a new graphql metric tree is ready to process.
-let processor = Function();
+// emitter sends recorded information.
+// emits 'metric' and 'trace' events.
+export const emitter = new EventEmitter();
 
 // ResultNode objects are grouped into a result tree.
 // It also contains a map of all nodes in the tree.
@@ -43,8 +44,7 @@ class ResultNode {
 }
 
 // Hijack the execute function
-export function hijack(fn = Function()) {
-  processor = fn;
+export function hijack() {
   execute.execute = hijackedExecute;
 }
 
@@ -55,20 +55,20 @@ export function restore() {
 
 // Hijacked version of the graphql execute function
 // Instrument the schema before resolving the query.
-// args: schema, docAST, rootVal, varVal, opname
-function hijackedExecute(schema, docAST, rootVal, varVal, opname) {
+// args: schema, ast, root, vars, opname
+function hijackedExecute(schema, ast, root, vars, opname) {
   if (!schema.__kadiraIntrumented) {
     instrumentSchema(schema);
     schema.__kadiraIntrumented = true;
   }
 
   // wrap the root value to add tree info.
-  const root = new ResultTree(rootVal);
-  const out = originalExecute.call(this, schema, docAST, root, varVal, opname);
+  const tree = new ResultTree(root);
+  const out = originalExecute.call(this, schema, ast, tree, vars, opname);
   // Use `Promise.resolve` on execute result which may or may not
   // be a promise. Resolve the promise and process collected data.
   return Promise.resolve(out).then(function (result) {
-    processor(root);
+    processTree(tree);
     return result;
   });
 }
@@ -161,4 +161,48 @@ function hijackResolve(field, schemaName, typeName, fieldName) {
       return data;
     });
   };
+}
+
+function processTree(tree) {
+  for (var key in tree.root.children) {
+    if (tree.root.children.hasOwnProperty(key)) {
+      const node = tree.root.children[key];
+      const result = walkTheTree(node);
+      emitter.emit('metrics', result.metrics);
+      emitter.emit('traces', result.trace);
+    }
+  }
+}
+
+function walkTheTree(tree, allMetrics = {}) {
+  let name = '';
+  if (tree.meta) {
+    name = tree.meta.schemaName +
+      '.' + tree.meta.typeName +
+      '.' + tree.meta.fieldName;
+  }
+
+  let metrics = allMetrics[name];
+  if (!metrics) {
+    metrics = allMetrics[name] = tree.metrics;
+  } else {
+    for (var key in tree.metrics) {
+      if (tree.metrics.hasOwnProperty(key)) {
+        metrics[key].total += tree.metrics[key].total;
+        metrics[key].count += tree.metrics[key].count;
+      }
+    }
+  }
+
+  const children = [];
+  for (var childName in tree.children) {
+    if (tree.children.hasOwnProperty(childName)) {
+      const child = tree.children[childName];
+      const result = walkTheTree(child, allMetrics);
+      children.push(result.trace);
+    }
+  }
+
+  const trace = {name, metrics, children};
+  return {metrics: allMetrics, trace};
 }
