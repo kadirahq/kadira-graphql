@@ -101,14 +101,13 @@ function instrumentSchema(schema) {
         continue;
       }
 
-      const meta = {schemaName, typeName, fieldName};
-      hijackResolve(field, meta);
+      hijackResolve(field, schemaName, typeName, fieldName);
     }
   }
 }
 
 // hijacks the resolve function for a field identified by names.
-function hijackResolve(field, meta) {
+function hijackResolve(field, schemaName, typeName, fieldName) {
   const originalResolve = field.resolve;
 
   // NOTE `source` will be a `ResultTree` object when it's the
@@ -129,6 +128,15 @@ function hijackResolve(field, meta) {
       const metrics = {
         time: {total: millis, count: 1},
         count: {total: 1, count: 1},
+      };
+
+      const meta = {
+        schemaName,
+        typeName,
+        fieldName,
+        nodeResult: data,
+        nodeArguments: args,
+        parentResult: source,
       };
 
       function wrap(item) {
