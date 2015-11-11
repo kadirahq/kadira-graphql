@@ -187,10 +187,17 @@ function walkTheTree(tree, allMetrics = {}) {
     metrics = allMetrics[name] = tree.metrics;
   } else {
     for (var key in tree.metrics) {
-      if (tree.metrics.hasOwnProperty(key)) {
-        metrics[key].total += tree.metrics[key].total;
-        metrics[key].count += tree.metrics[key].count;
+      if (!tree.metrics.hasOwnProperty(key)) {
+        continue;
       }
+
+      if (!metrics[key]) {
+        metrics[key] = tree.metrics[key];
+        continue;
+      }
+
+      metrics[key].total += tree.metrics[key].total;
+      metrics[key].count += tree.metrics[key].count;
     }
   }
 
