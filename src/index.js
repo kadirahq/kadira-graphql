@@ -15,6 +15,12 @@ export function connect(options) {
   });
 }
 
+// TODO remove this debug only function
+// Only used until we write some tests
+export function _hijack() {
+  hijack(processTree);
+}
+
 function processTree(tree) {
   // TODO collect graph metrics with meta data.
   const result = walkTheTree(tree.root);
