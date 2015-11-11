@@ -56,21 +56,19 @@ export function restore() {
 // Hijacked version of the graphql execute function
 // Instrument the schema before resolving the query.
 // args: schema, docAST, rootVal, varVal, opname
-function hijackedExecute(schema, docAST, rootVal) {
+function hijackedExecute(schema, docAST, rootVal, varVal, opname) {
   if (!schema.__kadiraIntrumented) {
     instrumentSchema(schema);
     schema.__kadiraIntrumented = true;
   }
 
   // wrap the root value to add tree info.
-  const tree = new ResultTree(rootVal);
-  arguments[2] = tree;
-
-  const output = originalExecute.apply(this, arguments);
+  const root = new ResultTree(rootVal);
+  const out = originalExecute.call(this, schema, docAST, root, varVal, opname);
   // Use `Promise.resolve` on execute result which may or may not
   // be a promise. Resolve the promise and process collected data.
-  return Promise.resolve(output).then(function (result) {
-    processor(tree);
+  return Promise.resolve(out).then(function (result) {
+    processor(root);
     return result;
   });
 }
