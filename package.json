@@ -40,11 +40,17 @@
     "chai": "3.x.x",
     "eslint": "1.7.x",
     "eslint-plugin-babel": "2.x.x",
+    "graphql": "0.4.x",
     "hapi": "11.0.x",
     "mocha": "2.x.x"
   },
   "dependencies": {
     "babel-runtime": "6.0.x",
-    "isomorphic-fetch": "2.2.x"
+    "events": "1.1.x",
+    "isomorphic-fetch": "2.2.x",
+    "kadira-core": "0.0.x"
+  },
+  "peerDependencies": {
+    "graphql": "0.4.x"
   }
 }
