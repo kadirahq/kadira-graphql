@@ -1,6 +1,6 @@
 {
   "name": "kadira-graphql",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Kadira client to track graphql server performance metrics.",
   "main": "./build/",
   "options": {
