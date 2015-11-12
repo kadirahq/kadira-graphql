@@ -1,6 +1,5 @@
 import KadiraCore from 'kadira-core';
 import {hijack, emitter} from './hijack';
-import {format} from './metrics';
 
 // This will hold an instance of the KadiraCore class
 // which will be used for authentication and transport.
@@ -55,22 +54,23 @@ function flushData() {
     return;
   }
 
-  const formatted = {};
+  const startTime = Date.now();
+  const graphNodes = {};
   for (const key in metrics) {
     if (!metrics.hasOwnProperty(key)) {
       continue;
     }
 
-    formatted[key] = {};
+    graphNodes[key] = {};
     for (const name in metrics[key]) {
       if (!metrics[key].hasOwnProperty(name)) {
         continue;
       }
 
-      formatted[key][name] = format(name, metrics[key][name]);
+      graphNodes[key][name] = metrics[key][name];
     }
   }
 
-  kadira.addData('graphqlMetrics', formatted);
+  kadira.addData('graphqlMetrics', {startTime, graphNodes});
   metrics = {};
 }
