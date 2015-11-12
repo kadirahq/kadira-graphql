@@ -1,5 +1,6 @@
 import KadiraCore from 'kadira-core';
 import {hijack, emitter} from './hijack';
+import {format} from './metrics';
 
 // This will hold an instance of the KadiraCore class
 // which will be used for authentication and transport.
@@ -22,7 +23,7 @@ export function connect(options) {
 }
 
 function collectMetrics(data) {
-  for (var key in data) {
+  for (const key in data) {
     if (!data.hasOwnProperty(key)) {
       continue;
     }
@@ -32,13 +33,21 @@ function collectMetrics(data) {
       continue;
     }
 
-    metrics[key].total += data[key].total;
-    metrics[key].count += data[key].count;
+    for (const name in data[key]) {
+      if (!data[key].hasOwnProperty(name)) {
+        metrics[key][name] = data[key][name];
+        continue;
+      }
+
+      metrics[key][name].total += data[key][name].total;
+      metrics[key][name].count += data[key][name].count;
+    }
   }
 }
 
 function collectTraces(data) {
-  kadira.addData('graphqlTraces', data);
+  // TODO format the trace first (clean it).
+  // kadira.addData('graphqlTraces', data);
 }
 
 function flushData() {
@@ -46,6 +55,22 @@ function flushData() {
     return;
   }
 
-  kadira.addData('graphqlMetrics', metrics);
+  const formatted = {};
+  for (const key in metrics) {
+    if (!metrics.hasOwnProperty(key)) {
+      continue;
+    }
+
+    formatted[key] = {};
+    for (const name in metrics[key]) {
+      if (!metrics[key].hasOwnProperty(name)) {
+        continue;
+      }
+
+      formatted[key][name] = format(name, metrics[key][name]);
+    }
+  }
+
+  kadira.addData('graphqlMetrics', formatted);
   metrics = {};
 }
