@@ -126,8 +126,8 @@ function hijackResolve(field, schemaName, typeName, fieldName) {
     return Promise.resolve(output).then(function (data) {
       const millis = Date.now() - before;
       const metrics = {
-        'graphql-node-resolve-time': {total: millis, count: 1},
-        'graphql-node-resolve-count': {total: 1, count: 1},
+        nodeResolveTime: {total: millis, count: 1},
+        nodeResolveCount: {total: 1, count: 1},
       };
 
       const meta = {
