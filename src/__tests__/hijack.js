@@ -59,7 +59,7 @@ describe('hijack module', function () {
           parentResult: 'p0',
         },
         {
-          time: {total: 0, count: 1},
+          time: {total: 10, count: 1},
           count: {total: 1, count: 1}
         },
       );
@@ -74,7 +74,7 @@ describe('hijack module', function () {
           parentResult: 'p00',
         },
         {
-          time: {total: 0, count: 2},
+          time: {total: 40, count: 2},
           count: {total: 2, count: 2}
         },
       );
@@ -89,7 +89,7 @@ describe('hijack module', function () {
           parentResult: 'p01',
         },
         {
-          time: {total: 0, count: 3},
+          time: {total: 90, count: 3},
           count: {total: 2, count: 2}
         },
       );
@@ -98,11 +98,11 @@ describe('hijack module', function () {
 
       assert.deepEqual(result.metrics, {
         's1.t1.f1': {
-          time: {total: 0, count: 1},
+          time: {total: 10, count: 1},
           count: {total: 1, count: 1}
         },
         's1.t2.f2': {
-          time: {total: 0, count: 5},
+          time: {total: 130, count: 5},
           count: {total: 4, count: 4}
         }
       });
@@ -112,14 +112,14 @@ describe('hijack module', function () {
         args: 'a0',
         source: 'p0',
         result: 'r0',
-        value: {total: 0, count: 1},
+        value: 10,
         children: [
           {
             name: 's1.t2.f2',
             args: 'a00',
             result: 'r00',
             source: 'p00',
-            value: {total: 0, count: 2},
+            value: 20,
             children: []
           },
           {
@@ -127,7 +127,7 @@ describe('hijack module', function () {
             args: 'a01',
             result: 'r01',
             source: 'p01',
-            value: {total: 0, count: 3},
+            value: 30,
             children: []
           }
         ]

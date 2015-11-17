@@ -210,10 +210,16 @@ export function walkTheTree(tree, metrics = {}) {
     }
   }
 
+  let value = 0;
+  if (tree.metrics.time) {
+    const time = tree.metrics.time;
+    value = (time.total / time.count) || 0;
+  }
+
   const trace = {
     name,
+    value,
     children,
-    value: tree.metrics.time,
     args: tree.meta.nodeArguments,
     source: tree.meta.parentResult,
     result: tree.meta.nodeResult,
