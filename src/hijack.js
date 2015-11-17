@@ -10,21 +10,10 @@ let NEXT_NODE_ID = 0;
 // emits 'metric' and 'trace' events.
 export const emitter = new EventEmitter();
 
-// ResultNode objects are grouped into a result tree.
-// It also contains a map of all nodes in the tree.
-// Root value is available in the `data` field.
-class ResultTree {
-  constructor(data) {
-    this._all = {};
-    this.data = data;
-    this.root = new ResultNode(this);
-  }
-}
-
 // Resolved values will be wrapped with this special Value class
 // in order to attach additional metadata without affecting the
 // original result item in any way.
-class ResultNode {
+export class ResultNode {
   constructor(tree, meta, metrics) {
     this.id = NEXT_NODE_ID++;
     this.tree = tree;
@@ -34,12 +23,39 @@ class ResultNode {
     this.children = {};
   }
 
+  get name() {
+    if (!this.meta) {
+      return '';
+    }
+
+    return this.meta.schemaName +
+      '.' + this.meta.typeName +
+      '.' + this.meta.fieldName;
+  }
+
   addChild(meta, metrics) {
     const node = new ResultNode(this.tree, meta, metrics);
     node.parent = this;
     this.children[node.id] = node;
     node.tree._all[node.id] = node;
     return node;
+  }
+}
+
+// ResultNode objects are grouped into a result tree.
+// It also contains a map of all nodes in the tree.
+// Root value is available in the `data` field.
+export class ResultTree {
+  constructor(data) {
+    // this._all collects all nodes
+    // in all levels under this tree
+    this._all = {};
+    // this.data holds the original
+    // root value (if given by user)
+    this.data = data;
+    // this.root does not have any
+    // data. Holds trees in children.
+    this.root = new ResultNode(this);
   }
 }
 
@@ -134,8 +150,8 @@ function hijackResolve(field, schemaName, typeName, fieldName) {
         schemaName,
         typeName,
         fieldName,
-        nodeResult: data,
         nodeArguments: args,
+        nodeResult: data,
         parentResult: source,
       };
 
@@ -163,7 +179,7 @@ function hijackResolve(field, schemaName, typeName, fieldName) {
   };
 }
 
-function processTree(tree) {
+export function processTree(tree) {
   for (var key in tree.root.children) {
     if (tree.root.children.hasOwnProperty(key)) {
       const node = tree.root.children[key];
@@ -174,42 +190,55 @@ function processTree(tree) {
   }
 }
 
-function walkTheTree(tree, allMetrics = {}) {
-  let name = '';
-  if (tree.meta) {
-    name = tree.meta.schemaName +
-      '.' + tree.meta.typeName +
-      '.' + tree.meta.fieldName;
-  }
+export function walkTheTree(tree, metrics = {}) {
+  const name = tree.name;
 
-  let metrics = allMetrics[name];
-  if (!metrics) {
-    metrics = allMetrics[name] = tree.metrics;
+  let nodeMetrics = metrics[name];
+  if (nodeMetrics) {
+    mergeMetrics(nodeMetrics, tree.metrics);
   } else {
-    for (var key in tree.metrics) {
-      if (!tree.metrics.hasOwnProperty(key)) {
-        continue;
-      }
-
-      if (!metrics[key]) {
-        metrics[key] = tree.metrics[key];
-        continue;
-      }
-
-      metrics[key].total += tree.metrics[key].total;
-      metrics[key].count += tree.metrics[key].count;
-    }
+    const clone = cloneMetrics(tree.metrics);
+    nodeMetrics = metrics[name] = clone;
   }
 
   const children = [];
   for (var childName in tree.children) {
     if (tree.children.hasOwnProperty(childName)) {
       const child = tree.children[childName];
-      const result = walkTheTree(child, allMetrics);
+      const result = walkTheTree(child, metrics);
       children.push(result.trace);
     }
   }
 
-  const trace = {name, metrics, children};
-  return {metrics: allMetrics, trace};
+  const trace = {
+    name,
+    children,
+    value: tree.metrics.time,
+    args: tree.meta.nodeArguments,
+    source: tree.meta.parentResult,
+    result: tree.meta.nodeResult,
+  };
+
+  return {metrics, trace};
+}
+
+function cloneMetrics(metrics) {
+  // TODO: find the fastest method to clone
+  return JSON.parse(JSON.stringify(metrics));
+}
+
+function mergeMetrics(existing, current) {
+  for (var key in current) {
+    if (!current.hasOwnProperty(key)) {
+      continue;
+    }
+
+    if (!existing[key]) {
+      existing[key] = current[key];
+      continue;
+    }
+
+    existing[key].total += current[key].total;
+    existing[key].count += current[key].count;
+  }
 }
