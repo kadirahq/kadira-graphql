@@ -1,6 +1,5 @@
 import {EventEmitter} from 'events';
 import {ResultTree} from './graph';
-import {TraceStore} from './traces';
 
 const execute = require('graphql/execution/execute');
 const originalExecute = execute.execute;
@@ -21,10 +20,6 @@ export function restore() {
 // emitter sends recorded information.
 // emits 'metric' and 'trace' events.
 export const emitter = new EventEmitter();
-
-// traces holds trace metadata
-// useful to identify outliers
-const traces = new TraceStore();
 
 // Hijacked version of the graphql execute function
 // Instrument the schema before resolving the query.
@@ -154,9 +149,7 @@ export function processTree(tree) {
         nodeMetrics = metrics[node.name] = clone;
       }
 
-      if (traces.isOutlier(node)) {
-        emitter.emit('trace', node.trace);
-      }
+      emitter.emit('trace', node.trace);
     });
 
     emitter.emit('metrics', metrics);
