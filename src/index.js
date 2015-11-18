@@ -16,7 +16,7 @@ export function connect(options) {
   return kadira.connect().then(() => {
     hijack();
     emitter.on('metrics', collectMetrics);
-    emitter.on('traces', collectTraces);
+    emitter.on('trace', collectTrace);
     setInterval(flushData, 10 * 1000);
   });
 }
@@ -44,7 +44,7 @@ function collectMetrics(data) {
   }
 }
 
-function collectTraces(data) {
+function collectTrace(/* trace */) {
   // TODO format the trace first (clean it).
   // kadira.addData('graphqlTraces', data);
 }

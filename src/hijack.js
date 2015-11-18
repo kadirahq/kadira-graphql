@@ -1,47 +1,11 @@
 import {EventEmitter} from 'events';
+import {ResultTree} from './graph';
+
 const execute = require('graphql/execution/execute');
 const originalExecute = execute.execute;
 
 // create unique ids
 let NEXT_SCHEMA_ID = 0;
-let NEXT_NODE_ID = 0;
-
-// emitter sends recorded information.
-// emits 'metric' and 'trace' events.
-export const emitter = new EventEmitter();
-
-// ResultNode objects are grouped into a result tree.
-// It also contains a map of all nodes in the tree.
-// Root value is available in the `data` field.
-class ResultTree {
-  constructor(data) {
-    this._all = {};
-    this.data = data;
-    this.root = new ResultNode(this);
-  }
-}
-
-// Resolved values will be wrapped with this special Value class
-// in order to attach additional metadata without affecting the
-// original result item in any way.
-class ResultNode {
-  constructor(tree, meta, metrics) {
-    this.id = NEXT_NODE_ID++;
-    this.tree = tree;
-    this.meta = meta;
-    this.metrics = metrics;
-    this.parent = null;
-    this.children = {};
-  }
-
-  addChild(meta, metrics) {
-    const node = new ResultNode(this.tree, meta, metrics);
-    node.parent = this;
-    this.children[node.id] = node;
-    node.tree._all[node.id] = node;
-    return node;
-  }
-}
 
 // Hijack the execute function
 export function hijack() {
@@ -52,6 +16,10 @@ export function hijack() {
 export function restore() {
   execute.execute = originalExecute;
 }
+
+// emitter sends recorded information.
+// emits 'metric' and 'trace' events.
+export const emitter = new EventEmitter();
 
 // Hijacked version of the graphql execute function
 // Instrument the schema before resolving the query.
@@ -134,8 +102,8 @@ function hijackResolve(field, schemaName, typeName, fieldName) {
         schemaName,
         typeName,
         fieldName,
-        nodeResult: data,
         nodeArguments: args,
+        nodeResult: data,
         parentResult: source,
       };
 
@@ -163,53 +131,65 @@ function hijackResolve(field, schemaName, typeName, fieldName) {
   };
 }
 
-function processTree(tree) {
+export function processTree(tree) {
   for (var key in tree.root.children) {
-    if (tree.root.children.hasOwnProperty(key)) {
-      const node = tree.root.children[key];
-      const result = walkTheTree(node);
-      emitter.emit('metrics', result.metrics);
-      emitter.emit('traces', result.trace);
+    if (!tree.root.children.hasOwnProperty(key)) {
+      continue;
     }
+
+    const rootNode = tree.root.children[key];
+    const metrics = {};
+
+    const trace = rootNode.mapTree(node => {
+      let nodeMetrics = metrics[node.name];
+      if (nodeMetrics) {
+        mergeMetrics(nodeMetrics, node.metrics);
+      } else {
+        const clone = cloneMetrics(node.metrics);
+        nodeMetrics = metrics[node.name] = clone;
+      }
+
+      return {
+        name: node.name,
+        value: calculateValue(node),
+        args: node.meta.nodeArguments,
+        source: node.meta.parentResult,
+        result: node.meta.nodeResult,
+      };
+    });
+
+    emitter.emit('metrics', metrics);
+    emitter.emit('trace', trace);
   }
 }
 
-function walkTheTree(tree, allMetrics = {}) {
-  let name = '';
-  if (tree.meta) {
-    name = tree.meta.schemaName +
-      '.' + tree.meta.typeName +
-      '.' + tree.meta.fieldName;
+function calculateValue(node) {
+  let value = 0;
+  if (node.metrics.time) {
+    const time = node.metrics.time;
+    value = (time.total / time.count) || 0;
   }
 
-  let metrics = allMetrics[name];
-  if (!metrics) {
-    metrics = allMetrics[name] = tree.metrics;
-  } else {
-    for (var key in tree.metrics) {
-      if (!tree.metrics.hasOwnProperty(key)) {
-        continue;
-      }
+  return value;
+}
 
-      if (!metrics[key]) {
-        metrics[key] = tree.metrics[key];
-        continue;
-      }
+function cloneMetrics(metrics) {
+  // TODO: find the fastest method to clone
+  return JSON.parse(JSON.stringify(metrics));
+}
 
-      metrics[key].total += tree.metrics[key].total;
-      metrics[key].count += tree.metrics[key].count;
+function mergeMetrics(existing, current) {
+  for (var key in current) {
+    if (!current.hasOwnProperty(key)) {
+      continue;
     }
-  }
 
-  const children = [];
-  for (var childName in tree.children) {
-    if (tree.children.hasOwnProperty(childName)) {
-      const child = tree.children[childName];
-      const result = walkTheTree(child, allMetrics);
-      children.push(result.trace);
+    if (!existing[key]) {
+      existing[key] = current[key];
+      continue;
     }
-  }
 
-  const trace = {name, metrics, children};
-  return {metrics: allMetrics, trace};
+    existing[key].total += current[key].total;
+    existing[key].count += current[key].count;
+  }
 }
