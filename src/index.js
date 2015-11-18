@@ -44,9 +44,8 @@ function collectMetrics(data) {
   }
 }
 
-function collectTrace(/* trace */) {
-  // TODO format the trace first (clean it).
-  // kadira.addData('graphqlTraces', data);
+function collectTrace(trace) {
+  kadira.addData('graphqlTraces', trace);
 }
 
 function flushData() {
