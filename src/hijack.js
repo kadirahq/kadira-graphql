@@ -132,7 +132,7 @@ function hijackResolve(field, schemaName, typeName, fieldName) {
 }
 
 export function processTree(tree) {
-  for (var key in tree.root.children) {
+  for (const key in tree.root.children) {
     if (!tree.root.children.hasOwnProperty(key)) {
       continue;
     }
@@ -179,7 +179,7 @@ function cloneMetrics(metrics) {
 }
 
 function mergeMetrics(existing, current) {
-  for (var key in current) {
+  for (const key in current) {
     if (!current.hasOwnProperty(key)) {
       continue;
     }

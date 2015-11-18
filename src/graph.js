@@ -36,7 +36,7 @@ export class ResultNode {
     const result = fn(this);
     const children = {};
 
-    for (var name in this.children) {
+    for (const name in this.children) {
       if (this.children.hasOwnProperty(name)) {
         const child = this.children[name];
         children[name] = child.mapTree(fn);
