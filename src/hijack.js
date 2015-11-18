@@ -1,5 +1,6 @@
 import {EventEmitter} from 'events';
 import {ResultTree} from './graph';
+import {TraceStore} from './traces';
 
 const execute = require('graphql/execution/execute');
 const originalExecute = execute.execute;
@@ -20,6 +21,10 @@ export function restore() {
 // emitter sends recorded information.
 // emits 'metric' and 'trace' events.
 export const emitter = new EventEmitter();
+
+// traces holds trace metadata
+// useful to identify outliers
+const traces = new TraceStore();
 
 // Hijacked version of the graphql execute function
 // Instrument the schema before resolving the query.
@@ -132,7 +137,7 @@ function hijackResolve(field, schemaName, typeName, fieldName) {
 }
 
 export function processTree(tree) {
-  for (var key in tree.root.children) {
+  for (const key in tree.root.children) {
     if (!tree.root.children.hasOwnProperty(key)) {
       continue;
     }
@@ -140,7 +145,7 @@ export function processTree(tree) {
     const rootNode = tree.root.children[key];
     const metrics = {};
 
-    const trace = rootNode.mapTree(node => {
+    rootNode.mapTree(node => {
       let nodeMetrics = metrics[node.name];
       if (nodeMetrics) {
         mergeMetrics(nodeMetrics, node.metrics);
@@ -149,28 +154,13 @@ export function processTree(tree) {
         nodeMetrics = metrics[node.name] = clone;
       }
 
-      return {
-        name: node.name,
-        value: calculateValue(node),
-        args: node.meta.nodeArguments,
-        source: node.meta.parentResult,
-        result: node.meta.nodeResult,
-      };
+      if (traces.isOutlier(node)) {
+        emitter.emit('trace', node.trace);
+      }
     });
 
     emitter.emit('metrics', metrics);
-    emitter.emit('trace', trace);
   }
-}
-
-function calculateValue(node) {
-  let value = 0;
-  if (node.metrics.time) {
-    const time = node.metrics.time;
-    value = (time.total / time.count) || 0;
-  }
-
-  return value;
 }
 
 function cloneMetrics(metrics) {
@@ -179,7 +169,7 @@ function cloneMetrics(metrics) {
 }
 
 function mergeMetrics(existing, current) {
-  for (var key in current) {
+  for (const key in current) {
     if (!current.hasOwnProperty(key)) {
       continue;
     }

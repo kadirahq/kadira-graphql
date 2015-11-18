@@ -24,6 +24,46 @@ export class ResultNode {
       '.' + this.meta.fieldName;
   }
 
+  get path() {
+    const path = [];
+    let parent = this.parent;
+
+    // check meta field to ignore the root node of the tree.
+    // This check can be removed if the root node is removed.
+    while (parent && parent.meta) {
+      path.push({
+        time: parent.time,
+        name: parent.name,
+        args: parent.meta.nodeArguments,
+      });
+
+      parent = parent.parent;
+    }
+
+    path.reverse();
+    return path;
+  }
+
+  get time() {
+    const metric = this.metrics.time;
+    if (metric && metric.count) {
+      return metric.total / metric.count;
+    }
+
+    return 0;
+  }
+
+  get trace() {
+    return {
+      name: this.name,
+      path: this.path,
+      time: this.time,
+      args: this.meta.nodeArguments,
+      source: this.meta.parentResult,
+      result: this.meta.nodeResult,
+    };
+  }
+
   addChild(meta, metrics) {
     const node = new ResultNode(this.tree, meta, metrics);
     node.parent = this;
@@ -36,7 +76,7 @@ export class ResultNode {
     const result = fn(this);
     const children = {};
 
-    for (var name in this.children) {
+    for (const name in this.children) {
       if (this.children.hasOwnProperty(name)) {
         const child = this.children[name];
         children[name] = child.mapTree(fn);
