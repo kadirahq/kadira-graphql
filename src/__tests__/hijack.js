@@ -1,15 +1,28 @@
 import {describe, it} from 'mocha';
 import assert from 'assert';
 
+const execute = require('graphql/execution/execute');
+const originalExecute = execute.execute;
+
 import {
+  hijack,
+  restore,
+  emitter,
   ResultNode,
   ResultTree,
-  walkTheTree
+  processTree
 } from '../hijack';
 
 describe('hijack module', function () {
-  it('should be able to hijack');
-  it('should be able to restore');
+  it('should be able to hijack', function () {
+    hijack();
+    assert.notEqual(execute.execute, originalExecute);
+  });
+
+  it('should be able to restore', function () {
+    restore();
+    assert.equal(execute.execute, originalExecute);
+  });
 
   describe('ResultNode', function () {
     it('should init with unique ids', function () {
@@ -44,6 +57,35 @@ describe('hijack module', function () {
         assert.equal(tree._all[child.id], child);
       });
     });
+
+    describe('mapTree', function () {
+      it('should map with tree layout', function () {
+        const tree = {_all: {}};
+        const root = new ResultNode(tree);
+        const l0c0 = root.addChild();
+        const l0c1 = root.addChild();
+        const l1c0 = l0c1.addChild();
+        const nodes = [];
+
+        const result = root.mapTree(node => {
+          nodes.push(node.id);
+          return node.id;
+        });
+
+        assert.deepEqual(result, {
+          result: root.id,
+          children: {
+            [l0c0.id]: {result: l0c0.id, children: {}},
+            [l0c1.id]: {
+              result: l0c1.id,
+              children: {
+                [l1c0.id]: {result: l1c0.id, children: {}},
+              },
+            },
+          },
+        });
+      });
+    });
   });
 
   describe('processTree', function () {
@@ -64,7 +106,7 @@ describe('hijack module', function () {
         },
       );
 
-      node.addChild(
+      const child1 = node.addChild(
         {
           schemaName: 's1',
           typeName: 't2',
@@ -79,7 +121,7 @@ describe('hijack module', function () {
         },
       );
 
-      node.addChild(
+      const child2 = node.addChild(
         {
           schemaName: 's1',
           typeName: 't2',
@@ -94,9 +136,13 @@ describe('hijack module', function () {
         },
       );
 
-      const result = walkTheTree(node);
+      let resultMetrics;
+      let resultTrace;
+      emitter.once('metrics', metrics => resultMetrics = metrics);
+      emitter.once('trace', trace => resultTrace = trace);
+      processTree(tree);
 
-      assert.deepEqual(result.metrics, {
+      assert.deepEqual(resultMetrics, {
         's1.t1.f1': {
           time: {total: 10, count: 1},
           count: {total: 1, count: 1}
@@ -107,32 +153,37 @@ describe('hijack module', function () {
         }
       });
 
-      assert.deepEqual(result.trace, {
-        name: 's1.t1.f1',
-        args: 'a0',
-        source: 'p0',
-        result: 'r0',
-        value: 10,
-        children: [
-          {
-            name: 's1.t2.f2',
-            args: 'a00',
-            result: 'r00',
-            source: 'p00',
-            value: 20,
-            children: []
+      assert.deepEqual(resultTrace, {
+        result: {
+          name: 's1.t1.f1',
+          args: 'a0',
+          source: 'p0',
+          result: 'r0',
+          value: 10,
+        },
+        children: {
+          [child1.id]: {
+            result: {
+              name: 's1.t2.f2',
+              args: 'a00',
+              result: 'r00',
+              source: 'p00',
+              value: 20,
+            },
+            children: {},
           },
-          {
-            name: 's1.t2.f2',
-            args: 'a01',
-            result: 'r01',
-            source: 'p01',
-            value: 30,
-            children: []
-          }
-        ]
+          [child2.id]: {
+            result: {
+              name: 's1.t2.f2',
+              args: 'a01',
+              result: 'r01',
+              source: 'p01',
+              value: 30,
+            },
+            children: {},
+          },
+        },
       });
-
     });
   });
 });
