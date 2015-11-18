@@ -17,7 +17,7 @@ export function connect(options) {
     hijack();
     emitter.on('metrics', collectMetrics);
     emitter.on('trace', collectTrace);
-    setInterval(flushData, 10 * 1000);
+    setInterval(flushMetrics, 10000);
   });
 }
 
@@ -44,11 +44,7 @@ function collectMetrics(data) {
   }
 }
 
-function collectTrace(trace) {
-  kadira.addData('graphqlTraces', trace);
-}
-
-function flushData() {
+function flushMetrics() {
   if (!Object.keys(metrics).length) {
     return;
   }
@@ -72,4 +68,8 @@ function flushData() {
 
   kadira.addData('graphqlMetrics', {startTime, graphNodes});
   metrics = {};
+}
+
+function collectTrace(trace) {
+  kadira.addData('graphqlTraces', trace);
 }
