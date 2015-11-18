@@ -18,15 +18,84 @@ describe('graph module', function () {
       assert.equal(count, 1000);
     });
 
-    it('should return computed name', function () {
-      const meta = {schemaName: 's1', typeName: 't1', fieldName: 'f1'};
-      const node = new ResultNode(null, meta);
-      assert.equal(node.name, 's1.t1.f1');
+    describe('get name', function () {
+      it('should return computed name', function () {
+        const meta = {schemaName: 's1', typeName: 't1', fieldName: 'f1'};
+        const node = new ResultNode(null, meta);
+        assert.equal(node.name, 's1.t1.f1');
+      });
+    });
+
+    describe('get path', function () {
+      it('should return the lineage', function () {
+        function getMetadata(n) {
+          return {
+            schemaName: 's' + n,
+            typeName: 't' + n,
+            fieldName: 'f' + n,
+            nodeArguments: 'a' + n,
+          };
+        }
+
+        function getMetrics(n) {
+          return {time: {total: n, count: 1}};
+        }
+
+        const tree = new ResultTree();
+        const n0 = new ResultNode(tree, getMetadata(0), getMetrics(0));
+        const n1 = n0.addChild(getMetadata(1), getMetrics(1));
+        const n2 = n1.addChild(getMetadata(2), getMetrics(2));
+        assert.deepEqual(n2.path, [
+          {time: 0, name: 's0.t0.f0', args: 'a0'},
+          {time: 1, name: 's1.t1.f1', args: 'a1'},
+        ]);
+      });
+    });
+
+    describe('get time', function () {
+      it('should return the time', function () {
+        const tree = new ResultTree();
+        const metrics = {time: {total: 100, count: 2}};
+        const node = new ResultNode(tree, {}, metrics);
+        assert.equal(node.time, 50);
+      });
+    });
+
+    describe('get trace', function () {
+      it('should return the trace', function () {
+        function getMetadata(n) {
+          return {
+            schemaName: 's' + n,
+            typeName: 't' + n,
+            fieldName: 'f' + n,
+            nodeArguments: 'a' + n,
+            parentResult: 'p' + n,
+            nodeResult: 'r' + n,
+          };
+        }
+
+        function getMetrics(n) {
+          return {time: {total: n, count: 1}};
+        }
+
+        const tree = new ResultTree();
+        const n0 = new ResultNode(tree, getMetadata(0), getMetrics(0));
+        const n1 = n0.addChild(getMetadata(1), getMetrics(1));
+        const n2 = n1.addChild(getMetadata(2), getMetrics(2));
+        assert.deepEqual(n2.trace, {
+          name: n2.name,
+          path: n2.path,
+          time: n2.time,
+          args: n2.meta.nodeArguments,
+          source: n2.meta.parentResult,
+          result: n2.meta.nodeResult,
+        });
+      });
     });
 
     describe('addChild', function () {
       it('should add child to parent', function () {
-        const tree = {_all: {}};
+        const tree = new ResultTree();
         const parent = new ResultNode(tree);
         const child = parent.addChild('meta', 'metrics');
         assert.equal(parent.children[child.id], child);

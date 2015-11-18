@@ -42,7 +42,7 @@ describe('hijack module', function () {
         },
       );
 
-      const child1 = node.addChild(
+      node.addChild(
         {
           schemaName: 's1',
           typeName: 't2',
@@ -57,7 +57,7 @@ describe('hijack module', function () {
         },
       );
 
-      const child2 = node.addChild(
+      node.addChild(
         {
           schemaName: 's1',
           typeName: 't2',
@@ -72,13 +72,14 @@ describe('hijack module', function () {
         },
       );
 
-      let resultMetrics;
-      let resultTrace;
-      emitter.once('metrics', metrics => resultMetrics = metrics);
-      emitter.once('trace', trace => resultTrace = trace);
+      let resultMetrics = [];
+      let resultTrace = [];
+      emitter.on('metrics', metrics => resultMetrics.push(metrics));
+      emitter.on('trace', trace => resultTrace.push(trace));
       processTree(tree);
 
-      assert.deepEqual(resultMetrics, {
+      assert.equal(resultMetrics.length, 1);
+      assert.deepEqual(resultMetrics[0], {
         's1.t1.f1': {
           time: {total: 10, count: 1},
           count: {total: 1, count: 1}
@@ -89,36 +90,40 @@ describe('hijack module', function () {
         }
       });
 
-      assert.deepEqual(resultTrace, {
-        result: {
+      assert.equal(resultTrace.length, 3);
+      assert.deepEqual(resultTrace[0], {
+        name: 's1.t1.f1',
+        time: 10,
+        args: 'a0',
+        source: 'p0',
+        result: 'r0',
+        path: [],
+      });
+
+      assert.deepEqual(resultTrace[1], {
+        name: 's1.t2.f2',
+        time: 20,
+        args: 'a00',
+        result: 'r00',
+        source: 'p00',
+        path: [ {
           name: 's1.t1.f1',
+          time: 10,
           args: 'a0',
-          source: 'p0',
-          result: 'r0',
-          value: 10,
-        },
-        children: {
-          [child1.id]: {
-            result: {
-              name: 's1.t2.f2',
-              args: 'a00',
-              result: 'r00',
-              source: 'p00',
-              value: 20,
-            },
-            children: {},
-          },
-          [child2.id]: {
-            result: {
-              name: 's1.t2.f2',
-              args: 'a01',
-              result: 'r01',
-              source: 'p01',
-              value: 30,
-            },
-            children: {},
-          },
-        },
+        } ],
+      });
+
+      assert.deepEqual(resultTrace[2], {
+        name: 's1.t2.f2',
+        time: 30,
+        args: 'a01',
+        result: 'r01',
+        source: 'p01',
+        path: [ {
+          name: 's1.t1.f1',
+          time: 10,
+          args: 'a0',
+        } ],
       });
     });
   });
