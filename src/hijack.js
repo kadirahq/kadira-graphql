@@ -141,15 +141,15 @@ export function processTree(tree) {
     const metrics = {};
 
     rootNode.mapTree(node => {
-      let nodeMetrics = metrics[node.name];
+      let nodeMetrics = metrics[node.getName()];
       if (nodeMetrics) {
         mergeMetrics(nodeMetrics, node.metrics);
       } else {
         const clone = cloneMetrics(node.metrics);
-        nodeMetrics = metrics[node.name] = clone;
+        nodeMetrics = metrics[node.getName()] = clone;
       }
 
-      emitter.emit('trace', node.trace);
+      emitter.emit('trace', node.getTrace());
     });
 
     emitter.emit('metrics', metrics);

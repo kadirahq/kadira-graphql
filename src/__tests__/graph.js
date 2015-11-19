@@ -18,15 +18,15 @@ describe('graph module', function () {
       assert.equal(count, 1000);
     });
 
-    describe('get name', function () {
+    describe('getName', function () {
       it('should return computed name', function () {
         const meta = {schemaName: 's1', typeName: 't1', fieldName: 'f1'};
         const node = new ResultNode(null, meta);
-        assert.equal(node.name, 's1.t1.f1');
+        assert.equal(node.getName(), 's1.t1.f1');
       });
     });
 
-    describe('get path', function () {
+    describe('getPath', function () {
       it('should return the lineage', function () {
         function getMetadata(n) {
           return {
@@ -45,23 +45,23 @@ describe('graph module', function () {
         const n0 = new ResultNode(tree, getMetadata(0), getMetrics(0));
         const n1 = n0.addChild(getMetadata(1), getMetrics(1));
         const n2 = n1.addChild(getMetadata(2), getMetrics(2));
-        assert.deepEqual(n2.path, [
+        assert.deepEqual(n2.getPath(), [
           {time: 0, name: 's0.t0.f0', args: 'a0'},
           {time: 1, name: 's1.t1.f1', args: 'a1'},
         ]);
       });
     });
 
-    describe('get time', function () {
+    describe('getTime', function () {
       it('should return the time', function () {
         const tree = new ResultTree();
         const metrics = {time: {total: 100, count: 2}};
         const node = new ResultNode(tree, {}, metrics);
-        assert.equal(node.time, 50);
+        assert.equal(node.getTime(), 50);
       });
     });
 
-    describe('get trace', function () {
+    describe('getTrace', function () {
       it('should return the trace', function () {
         function getMetadata(n) {
           return {
@@ -82,10 +82,10 @@ describe('graph module', function () {
         const n0 = new ResultNode(tree, getMetadata(0), getMetrics(0));
         const n1 = n0.addChild(getMetadata(1), getMetrics(1));
         const n2 = n1.addChild(getMetadata(2), getMetrics(2));
-        assert.deepEqual(n2.trace, {
-          name: n2.name,
-          path: n2.path,
-          time: n2.time,
+        assert.deepEqual(n2.getTrace(), {
+          name: n2.getName(),
+          path: n2.getPath(),
+          time: n2.getTime(),
           args: n2.meta.nodeArguments,
           source: n2.meta.parentResult,
           result: n2.meta.nodeResult,
