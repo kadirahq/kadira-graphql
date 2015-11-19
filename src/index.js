@@ -1,5 +1,6 @@
 import KadiraCore from 'kadira-core';
 import {hijack, emitter} from './hijack';
+import {TraceStore} from './traces';
 
 // This will hold an instance of the KadiraCore class
 // which will be used for authentication and transport.
@@ -7,6 +8,9 @@ export let kadira;
 
 // collect metrics
 let metrics = {};
+
+// store traces & pick outliers
+const traces = new TraceStore();
 
 // Perform the initial handshake with the Kadira Server
 // This functionr returns a promise and retries on fail.
@@ -17,7 +21,7 @@ export function connect(options) {
     hijack();
     emitter.on('metrics', collectMetrics);
     emitter.on('trace', collectTrace);
-    setInterval(flushMetrics, 10000);
+    setInterval(flushData, 10000);
   });
 }
 
@@ -42,6 +46,15 @@ function collectMetrics(data) {
       metrics[key][name].count += data[key][name].count;
     }
   }
+}
+
+function collectTrace(trace) {
+  traces.addTrace(trace);
+}
+
+function flushData() {
+  flushMetrics();
+  flushTraces();
 }
 
 function flushMetrics() {
@@ -70,6 +83,8 @@ function flushMetrics() {
   metrics = {};
 }
 
-function collectTrace(trace) {
-  kadira.addData('graphqlTraces', trace);
+function flushTraces() {
+  const startTime = Date.now();
+  const graphTraces = traces.getOutliers();
+  kadira.addData('graphqlTraces', {startTime, graphTraces});
 }
