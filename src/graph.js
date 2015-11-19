@@ -14,7 +14,7 @@ export class ResultNode {
     this.children = {};
   }
 
-  get name() {
+  getName() {
     if (!this.meta) {
       return '';
     }
@@ -24,7 +24,7 @@ export class ResultNode {
       '.' + this.meta.fieldName;
   }
 
-  get path() {
+  getPath() {
     const path = [];
     let parent = this.parent;
 
@@ -32,8 +32,8 @@ export class ResultNode {
     // This check can be removed if the root node is removed.
     while (parent && parent.meta) {
       path.push({
-        time: parent.time,
-        name: parent.name,
+        name: parent.getName(),
+        time: parent.getTime(),
         args: parent.meta.nodeArguments,
       });
 
@@ -44,7 +44,7 @@ export class ResultNode {
     return path;
   }
 
-  get time() {
+  getTime() {
     const metric = this.metrics.time;
     if (metric && metric.count) {
       return metric.total / metric.count;
@@ -53,11 +53,11 @@ export class ResultNode {
     return 0;
   }
 
-  get trace() {
+  getTrace() {
     return {
-      name: this.name,
-      path: this.path,
-      time: this.time,
+      name: this.getName(),
+      path: this.getPath(),
+      time: this.getTime(),
       args: this.meta.nodeArguments,
       source: this.meta.parentResult,
       result: this.meta.nodeResult,
