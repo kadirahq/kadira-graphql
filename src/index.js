@@ -1,6 +1,10 @@
 import KadiraCore from 'kadira-core';
 import {hijack, emitter} from './hijack';
 import {TraceStore} from './traces';
+import debug from 'debug';
+
+// create a logger for debugging
+const L = debug('kadira-graphql');
 
 // This will hold an instance of the KadiraCore class
 // which will be used for authentication and transport.
@@ -17,8 +21,11 @@ const traces = new TraceStore();
 // Data collection starts only after the connection.
 export function connect(options) {
   kadira = new KadiraCore(options);
+  L('connecting to a Kadira server');
   return kadira.connect().then(() => {
+    L('successfully authenticated!');
     hijack();
+    L('successfully instrumented!');
     emitter.on('metrics', collectMetrics);
     emitter.on('trace', collectTrace);
     setInterval(flushData, 10000);
@@ -53,37 +60,29 @@ function collectTrace(trace) {
 }
 
 function flushData() {
-  flushMetrics();
-  flushTraces();
-}
-
-function flushMetrics() {
-  if (!Object.keys(metrics).length) {
-    return;
-  }
-
-  const startTime = Date.now();
-  const graphNodes = {};
-  for (const key in metrics) {
-    if (!metrics.hasOwnProperty(key)) {
-      continue;
-    }
-
-    graphNodes[key] = {};
-    for (const name in metrics[key]) {
-      if (!metrics[key].hasOwnProperty(name)) {
+  L('sending data to Kadira servers!');
+  if (Object.keys(metrics).length) {
+    const startTime = Date.now();
+    const graphNodes = {};
+    for (const key in metrics) {
+      if (!metrics.hasOwnProperty(key)) {
         continue;
       }
 
-      graphNodes[key][name] = metrics[key][name];
+      graphNodes[key] = {};
+      for (const name in metrics[key]) {
+        if (!metrics[key].hasOwnProperty(name)) {
+          continue;
+        }
+
+        graphNodes[key][name] = metrics[key][name];
+      }
     }
+
+    kadira.addData('graphqlMetrics', {startTime, graphNodes});
+    metrics = {};
   }
 
-  kadira.addData('graphqlMetrics', {startTime, graphNodes});
-  metrics = {};
-}
-
-function flushTraces() {
   const startTime = Date.now();
   const graphTraces = traces.getOutliers();
   kadira.addData('graphqlTraces', {startTime, graphTraces});
