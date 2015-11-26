@@ -4,6 +4,9 @@ import {ResultTree} from './graph';
 const execute = require('graphql/execution/execute');
 const originalExecute = execute.execute;
 
+const Instrumented = Symbol();
+const KadiraData = Symbol();
+
 // create unique ids
 let NEXT_SCHEMA_ID = 0;
 
@@ -25,9 +28,9 @@ export const emitter = new EventEmitter();
 // Instrument the schema before resolving the query.
 // args: schema, ast, root, vars, opname
 function hijackedExecute(schema, ast, root, vars, opname) {
-  if (!schema.__kadiraIntrumented) {
+  if (!schema[Instrumented]) {
     instrumentSchema(schema);
-    schema.__kadiraIntrumented = true;
+    schema[Instrumented] = true;
   }
 
   // wrap the root value to add tree info.
@@ -82,7 +85,7 @@ function hijackResolve(field, schemaName, typeName, fieldName) {
   // root value. `source.data` will have the original value.
   field.resolve = function (_source, args, info) {
     let source = _source;
-    let parent = _source.__kadiraData;
+    let parent = _source[KadiraData];
     if (_source instanceof ResultTree) {
       source = _source.data;
       parent = _source.root;
@@ -109,10 +112,10 @@ function hijackResolve(field, schemaName, typeName, fieldName) {
 
       function wrap(item) {
         try {
-          // Sometimes, resolved results do not allow setting a `__kadiraData`
+          // Sometimes, resolved results do not allow setting a `KadiraData`
           // field. Catch that error and stop collecting for those results.
           const node = parent.addChild(meta, metrics);
-          item.__kadiraData = node;
+          item[KadiraData] = node;
         } catch (e) {
           // TODO check the error and selectively ignore them
           // Throw all other errors for now (while still alpha).
